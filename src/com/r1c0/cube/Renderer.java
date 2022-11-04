@@ -25,7 +25,7 @@ public class Renderer implements GLSurfaceView.Renderer, View.OnTouchListener{
 	private static final int DEFAULT_ANIMATION_DURATION = 250;
 	private static final int SUFFLING_ANIMATION_DURATION = 100;
 	private static final int SHUFFLE_STEP_COUNT = 200;
-	private static final float ROTATE_SENSITIVITY = 0.33f;
+	private static final float ROTATE_SENSITIVITY = 0.2f;
 
 	AssetManager am;
 
@@ -47,8 +47,10 @@ public class Renderer implements GLSurfaceView.Renderer, View.OnTouchListener{
 	int animationDuration;
 	boolean animating;
 	long animationStartTime;
+	long lastTouchEventTime;
 	
 	float lx, ly, sx, sy;
+	float vx, vy;
 	Face touchedFace;
 	RotationData selectedRotation;
 
@@ -278,13 +280,15 @@ public class Renderer implements GLSurfaceView.Renderer, View.OnTouchListener{
 				sx = x;
 				sy = y;
 				if(!animating) updateTouchedFace(x, y);
+				vx = 0;
+				vy = 0;
 				break;
 
 			case MotionEvent.ACTION_MOVE:
 				if(Math.hypot(sx-x, sy-y)>25 && touchedFace!=null && selectedRotation==null){
 					float maxDotProduct = 0;
 					for(RotationData rd : touchedFace.rotation){
-						float dotProduct = Math.abs(rd.directionDotProduct(mvp, x-sx, sy-y));
+						float dotProduct = Math.abs(rd.directionDotProduct(mvp, 32, x - sx, sy - y));
 						if(dotProduct>maxDotProduct){
 							selectedRotation = rd;
 							maxDotProduct = dotProduct;
@@ -298,24 +302,26 @@ public class Renderer implements GLSurfaceView.Renderer, View.OnTouchListener{
 					Matrix.invertM(im, 0, mvp, 32);
 					float u[] = {0, 1, 0, 0};
 					Matrix.multiplyMV(u, 0, im, 0, u, 0);
-					Matrix.rotateM(mvp, 32, (x-lx)/2, u[0], u[1], u[2]);
+					Matrix.rotateM(mvp, 32, (x - lx) * 180 / screenWidth, u[0], u[1], u[2]);
 
 					u = new float[]{1, 0, 0, 0};
 					Matrix.multiplyMV(u, 0, im, 0, u, 0);
-					Matrix.rotateM(mvp, 32, (y-ly)/2, u[0], u[1], u[2]);
+					Matrix.rotateM(mvp, 32, (y - ly) * 180 / screenWidth, u[0], u[1], u[2]);
 
 					Matrix.multiplyMM(mvp, 0, mvp, 16, mvp, 32);
 				}else if(selectedRotation!=null){
 					float[] axis = selectedRotation.axis;
-					Matrix.setRotateM(animationMatrix, 0, selectedRotation.directionDotProduct(mvp, x-sx, sy-y)/3, axis[0], axis[1], axis[2]);
+					Matrix.setRotateM(animationMatrix, 0, selectedRotation.directionDotProduct(mvp, 32, x - sx, sy - y) * ROTATE_SENSITIVITY, axis[0], axis[1], axis[2]);
 				}
+				vx = vx * 0.8f + 200.0f * (x - lx) / (e.getEventTime() - lastTouchEventTime);
+				vy = vy * 0.8f + 200.0f * (y - ly) / (e.getEventTime() - lastTouchEventTime);
 				break;
 
 			case MotionEvent.ACTION_UP:
 				if(selectedRotation!=null && touchedFace!=null){
-					startAngle = selectedRotation.directionDotProduct(mvp, x-sx, sy-y) * ROTATE_SENSITIVITY;
-					float angle = selectedRotation.directionDotProduct(mvp, x-sx+(x-lx)*30, sy-y+(ly-y)*300) * ROTATE_SENSITIVITY;
-					endAngle = Math.round(angle/90)*90;
+					startAngle = selectedRotation.directionDotProduct(mvp, 32, x - sx, sy - y) * ROTATE_SENSITIVITY;
+					float addAngle = selectedRotation.directionDotProduct(mvp, 32, 0.1f * vx, -0.1f * vy) * ROTATE_SENSITIVITY;
+					endAngle = Math.round((startAngle + addAngle) / 90) * 90;
 					animationDuration = (int) Math.abs(fullAnimationDuration*(endAngle-startAngle)/90);
 					animationStartTime = System.currentTimeMillis();
 					animating = true;
@@ -326,6 +332,7 @@ public class Renderer implements GLSurfaceView.Renderer, View.OnTouchListener{
 		Matrix.multiplyMV(renderLight, 0, im, 0, srcLight, 0);
 		lx = x;
 		ly = y;
+		lastTouchEventTime = e.getEventTime();
 		return true;
 	}
 

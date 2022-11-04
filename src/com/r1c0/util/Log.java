@@ -10,7 +10,7 @@ public class Log implements Thread.UncaughtExceptionHandler{
 	public static void init(File path){
 		Thread.setDefaultUncaughtExceptionHandler(new Log());
 		try{
-			out=new FileOutputStream(new File(path, "log.txt"), true);
+			out=new FileOutputStream(new File(path, "log.txt"), false);
 		}catch(IOException e){}
 	}
 	public static void print(Throwable e){

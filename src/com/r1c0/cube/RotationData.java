@@ -15,9 +15,9 @@ public class RotationData{
 		this.m=m;
 	}
 
-	public float directionDotProduct(float[] mvp, float x, float y){
+	public float directionDotProduct(float[] mvp, int indexStart, float x, float y){
 		float[] v = new float[4];
-		Matrix.multiplyMV(v, 0, mvp, 0, dir, 0);
+		Matrix.multiplyMV(v, 0, mvp, indexStart, dir, 0);
 		return v[0] * x + v[1] * y;
 	}
 
